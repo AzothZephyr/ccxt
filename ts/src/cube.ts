@@ -9,10 +9,10 @@ export default class cube extends Exchange {
         return this.deepExtend (super.describe (), {
             'id': 'cube',
             'name': 'Cube Exchange',
-            'countries': [ 'AU', 'PL' ], // TODO
+            'countries': [ 'AU', 'PL' ],
             'version': 'v1',
             // 'rateLimit': 100,
-            'pro': false, // TODO
+            'pro': true,
             'has': {
                 'CORS': undefined,
                 'spot': true,
@@ -88,14 +88,12 @@ export default class cube extends Exchange {
             'urls': {
                 'logo': 'https://avatars.githubusercontent.com/u/128435657?s=200&v=4',
                 'api': {
-                    'http': 'https://cube.exchange',
-                    'ws': 'ws://cube.exchange',
+                    'http': 'https://cube.exchange/',
                 },
                 'www': 'https://cube.exchange/',
                 'doc': [
                     'https://cube.exchange/docs',
                 ],
-                'fees': 'https://helpcenter.ace.io/hc/zh-tw/articles/360018609132-%E8%B2%BB%E7%8E%87%E8%AA%AA%E6%98%8E',
             },
             'requiredCredentials': {
                 'apiKey': true,
@@ -104,7 +102,8 @@ export default class cube extends Exchange {
             'api': {
                 'public': {
                     'get': [
-                        '/ir/v0/markets',
+                        'ir/v0/markets',
+                        'test',
                     ],
                 },
                 'private': {
@@ -125,5 +124,126 @@ export default class cube extends Exchange {
             'commonCurrencies': {
             },
         });
+    }
+
+    async fetchMarkets (params = {}) {
+        // {
+        //     "result": {
+        //         "assets": [
+        //             {
+        //                 "assetId": 1,
+        //                 "symbol": "BTC",
+        //                 "decimals": 8,
+        //                 "displayDecimals": 5,
+        //                 "transactionExplorer": "https://mempool.space/tx/{}",
+        //                 "addressExplorer": "https://mempool.space/address/{}",
+        //                 "settles": true,
+        //                 "assetType": "Crypto",
+        //                 "sourceId": 1,
+        //                 "metadata": {
+        //                     "asset": {
+        //                         "dustAmount": 3000
+        //                     },
+        //                     "source": {
+        //                         "network": "Mainnet",
+        //                         "scope": "bitcoin",
+        //                         "type": "mainnet"
+        //                     }
+        //                 }
+        //             },
+        //         <array truncated>
+        //         ],
+        //         "markets": [
+        //             {
+        //                 "symbol": "ETHBTC",
+        //                 "marketId": 100001,
+        //                 "baseAssetId": 2,
+        //                 "baseLotSize": "0x0000000000000000000000000000000000038d7ea4c68000",
+        //                 "quoteAssetId": 1,
+        //                 "quoteLotSize": "0x000000000000000000000000000000000000000000000001",
+        //                 "priceDisplayDecimals": 5,
+        //                 "protectionPriceLevels": 1000,
+        //                 "priceTickSize": "0.00001",
+        //                 "quantityTickSize": "0.001"
+        //             }
+        //          <array truncated>
+        //         ]
+        //     }
+        // }
+        const response = await this.publicGetIrV0Markets ();
+        const markets = response['markets'];
+        const assets = response['assets'];
+        const result = [];
+        for (let i = 0; i < markets.length; i++) {
+            const market = markets[i];
+            // check if baseStr is undefined
+            const base = this.safeString (assets, market.baseAssetId);
+            const quote = this.safeString (assets, market.quoteAssetId);
+            const symbol = market.symbol;
+            result.push ({
+                'id': this.safeInteger (market, 'marketId'),
+                'uppercaseId': undefined,
+                'symbol': symbol,
+                'base': base,
+                'baseId': this.safeInteger (market, market.baseAssetId),
+                'quote': quote,
+                'quoteId': this.safeInteger (market, market.quoteAssetId),
+                'settle': undefined,
+                'settleId': undefined,
+                'type': 'spot',
+                'spot': true,
+                'margin': false,
+                'swap': false,
+                'future': false,
+                'option': false,
+                'derivative': false,
+                'contract': false,
+                'linear': undefined,
+                'inverse': undefined,
+                'contractSize': undefined,
+                'expiry': undefined,
+                'expiryDatetime': undefined,
+                'strike': undefined,
+                'optionType': undefined,
+                'limits': {
+                    'amount': {
+                        'min': this.safeNumber (market, 'minLimitBaseAmount'),
+                        'max': this.safeNumber (market, 'maxLimitBaseAmount'),
+                    },
+                    'price': {
+                        'min': undefined,
+                        'max': undefined,
+                    },
+                    'cost': {
+                        'min': undefined,
+                        'max': undefined,
+                    },
+                    'leverage': {
+                        'min': undefined,
+                        'max': undefined,
+                    },
+                },
+                'precision': {
+                    'price': this.parseNumber (this.parsePrecision (this.safeString (market, 'quotePrecision'))),
+                    'amount': this.parseNumber (this.parsePrecision (this.safeString (market, 'basePrecision'))),
+                },
+                'active': undefined,
+                'created': undefined,
+                'info': market,
+            });
+        }
+        return result;
+    }
+
+    async fetchAssets () {
+        const response = await this.publicGetIrV0Markets ();
+        const assets = response['markets'];
+        const result = [];
+        for (let i = 0; i < assets.length; i++) {
+            // TODO: properly parse assets
+            const asset = assets[i];
+            result.push (asset);
+        }
+        return false;
     }
 }
